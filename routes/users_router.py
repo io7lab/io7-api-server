@@ -45,3 +45,10 @@ async def login(user: User) -> dict:
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid details passed."
     )
+
+@router.get('/wsmqaccess/{email}')
+async def wsmqaccess(email: str, jwt: str = Depends(authenticate)) -> dict:
+    return { 
+        "username": "$web", 
+        "password": "webpass"
+    }
