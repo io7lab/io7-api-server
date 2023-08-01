@@ -51,7 +51,7 @@ async def login(user: User) -> dict:
 async def wsmqaccess(user: str, jwt: str = Depends(authenticate)) -> dict:
     # user is passed for the future use like the per user access control
     try:
-        with open('wsmqaccess.json', 'r') as f:
+        with open('./data/wsmqaccess.json', 'r') as f:
             data = json.load(f)
             return data
     except Exception as e:

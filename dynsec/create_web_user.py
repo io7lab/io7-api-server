@@ -108,28 +108,15 @@ def create_web_user(**kwargs):
     # mqtt options generation
     mqtt_options = {
         'username': web_user,
-        'password': web_user_password,
-        'clean_session': True,
-        'tls_insecure': True,
-        'rejectUnauthorized': False
+        'password': web_user_password
     }
     import io
     run_cfg = io.StringIO()
     run_cfg.write(json.dumps(mqtt_options, indent=8))
     buffer = run_cfg.getvalue()
-    buffer = buffer.replace(buffer[len(buffer) - 1:], '    }')
 
-    print('/*')
-    print(' * New web user($web) created.')
-    print(' * Update the new $web id/password for the management web by')
-    print(' * placing the following as runtime-config.js')
-    print(' */')
-    print()
-    print('window["runtime"] = {')
-    print('     "ws_protocol":"ws://",')
-    print('     "mqtt_options" : ', end='')
-    print(buffer)
-    print('}')
+    with open('./data/wsmqaccess.json', 'w') as f:
+        f.write(buffer)
 
 if __name__ == '__main__':
     create_web_user()
