@@ -3,6 +3,7 @@ from models.users import User, NewUser, TokenResponse
 from secutils import create_access_token
 from secutils import authenticate, create_hash, verify_hash
 from environments import Database
+import json
 
 router = APIRouter(tags=['Users'])
 db = Database(User.Settings.name)
@@ -46,9 +47,15 @@ async def login(user: User) -> dict:
         detail="Invalid details passed."
     )
 
-@router.get('/wsmqaccess/{email}')
-async def wsmqaccess(email: str, jwt: str = Depends(authenticate)) -> dict:
-    return { 
-        "username": "$web", 
-        "password": "webpass"
-    }
+@router.get('/wsmqaccess/')
+async def wsmqaccess(user: str, jwt: str = Depends(authenticate)) -> dict:
+    # user is passed for the future use like the per user access control
+    try:
+        with open('wsmqaccess.json', 'r') as f:
+            data = json.load(f)
+            return data
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error occured while reading wsmqaccess.json file."
+        )
