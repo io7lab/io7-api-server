@@ -51,11 +51,12 @@ def create_web_user(**kwargs):
     cert = kwargs['cert']
     port = kwargs['port'] or 1883 if not kwargs['cert'] else 8883
 
+    protocol = 'ws'
     if cert and os.path.exists(cert):
         import ssl
         client.tls_set(cert, tls_version=ssl.PROTOCOL_TLSv1_2)
         client.tls_insecure_set(True)
-    
+        protocol = 'wss'
     
     client.username_pw_set(username, password)
     client.connect(host, port, 60)
@@ -126,7 +127,7 @@ def create_web_user(**kwargs):
     print(' */')
     print()
     print('window["runtime"] = {')
-    print('     "ws_protocol":"ws://",')
+    print(f'     "ws_protocol":"{protocol}://",')
     print('     "mqtt_options" : ', end='')
     print(buffer)
     print('}')
