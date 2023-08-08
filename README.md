@@ -1,4 +1,6 @@
-io7 IOT Platform API Server
+# io7 IOT Platform REST API Server
+
+This is the REST API Server for io7 Platform. It handles the registration and deregigistration of the devices and the application key.
 
 This repo is used to build the docker container `io7lab/io7-api`.
 
