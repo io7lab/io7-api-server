@@ -108,6 +108,7 @@ def create_web_user(**kwargs):
     
     # mqtt options generation
     mqtt_options = {
+        'clientId': 'io7web',
         'username': web_user,
         'password': web_user_password,
         'clean_session': True,
