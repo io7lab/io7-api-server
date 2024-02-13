@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from models.users import User, NewUser, TokenResponse
 from secutils import create_access_token
 from secutils import authenticate, create_hash, verify_hash
+from dynsec.mqttws_access import get_mqttws_access
 from environments import Database
 import json
 
@@ -47,15 +48,6 @@ async def login(user: User) -> dict:
         detail="Invalid details passed."
     )
 
-@router.get('/wsmqaccess/')
-async def wsmqaccess(user: str, jwt: str = Depends(authenticate)) -> dict:
-    # user is passed for the future use like the per user access control
-    try:
-        with open('./data/wsmqaccess.json', 'r') as f:
-            data = json.load(f)
-            return data
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error occured while reading wsmqaccess.json file."
-        )
+@router.get('/mqttws_access/')
+async def mqttws_access(jwt: str = Depends(authenticate)) -> dict:
+    return get_mqttws_access()
