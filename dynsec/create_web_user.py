@@ -104,6 +104,7 @@ def create_web_user(**kwargs):
             }
         ]
     }
+    time.sleep(1)
     client.publish('$CONTROL/dynamic-security/v1', json.dumps(cmd))
 
 if __name__ == '__main__':
