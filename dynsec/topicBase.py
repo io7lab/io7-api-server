@@ -1,6 +1,6 @@
 def get_topics(devId):
-    cmd_base = 'iot3/+devId/cmd/+/fmt/+'
-    evt_base = 'iot3/+devId/evt/+/fmt/+'
+    cmd_base = 'iot3/+devId/cmd/+/fmt/#'
+    evt_base = 'iot3/+devId/evt/+/fmt/#'
     log_base = 'iot3/+devId/mgmt/device/status'
     meta_base = 'iot3/+devId/mgmt/device/meta'
     update_base = 'iot3/+devId/mgmt/device/update'
