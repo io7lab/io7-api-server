@@ -9,6 +9,10 @@ import json
 router = APIRouter(tags=['Users'])
 db = Database(User.Settings.name)
 
+@router.get('/validate_token')
+async def valid_token(jwt: str = Depends(authenticate)) -> dict:
+    return {"detail": "Authorized"}
+
 @router.get('/whoami')
 async def whoami(jwt: str = Depends(authenticate)) -> dict:
     return jwt
