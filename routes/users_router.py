@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from models.users import User, NewUser, TokenResponse
 from secutils import create_access_token
 from secutils import authenticate, create_hash, verify_hash
-from dynsec.mqttws_access import get_mqttws_access
 from environments import Database
 import json
 
@@ -11,11 +10,7 @@ db = Database(User.Settings.name)
 
 @router.get('/validate_token')
 async def valid_token(jwt: str = Depends(authenticate)) -> dict:
-    return {"detail": "Authorized"}
-
-@router.get('/whoami')
-async def whoami(jwt: str = Depends(authenticate)) -> dict:
-    return jwt
+    return {"detail": "Authorized", "token": jwt}
 
 @router.post('/signup')
 async def add_user(user: NewUser) -> dict:
@@ -51,7 +46,3 @@ async def login(user: User) -> dict:
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid details passed."
     )
-
-@router.get('/mqttws_access/')
-async def mqttws_access(jwt: str = Depends(authenticate)) -> dict:
-    return get_mqttws_access()
