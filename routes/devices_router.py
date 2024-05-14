@@ -114,7 +114,7 @@ async def add_device(newDevice: NewDevice, jwt: str = Depends(authenticate)) -> 
         if qryApp:
             detail = f"The Id({newDevice.devId}) is already registered for AppId."
         else:
-            detail = f"The Id({newDevice.devId}) is already registered for Device."
+            detail = f"The Id({newDevice.devId}) is already registered for Device/Gateway."
         if type(jwt) == dict:
             # if jwt is dict, then it means it is called by REST API
             # if not, then it is called by MQTT
@@ -123,7 +123,8 @@ async def add_device(newDevice: NewDevice, jwt: str = Depends(authenticate)) -> 
                 detail=detail
             )
         else:
-            logger.warn(detail)
+            logger.error(detail)
+            return          # the edge device name is already taken
 
     if newDevice.type == 'edge':
         gw = device_db.getOne(device_db.qry.devId == newDevice.createdBy)
