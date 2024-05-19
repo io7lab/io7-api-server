@@ -15,7 +15,7 @@ def add_dynsec_device(device: NewDevice):
         'commands': [
             {
                 'command': 'createRole',
-                'rolename': acl.id(),
+                'rolename': acl.get_id(),
                 'acls': [
                         acl.subTopic('cmdTopic'),
                         acl.subTopic('updateTopic'),
@@ -47,24 +47,24 @@ def add_dynsec_device(device: NewDevice):
                 }
             ]
         }
-        logger.info(f'Creating Edge Client "{acl.id()}".')
+        logger.info(f'Creating Edge Client "{acl.get_id()}".')
     else:
         cmd = {
             'commands': [
                 {
                     'command': 'createClient',
-                    'username': acl.id(),
+                    'username': acl.get_id(),
                     'password': device.password,
                     'roles': [
                         {
-                            'rolename': acl.id(),
+                            'rolename': acl.get_id(),
                             'priority': -1
                         }
                     ]
                 }
             ]
         }
-        logger.info(f'Creating Client "{acl.id()}".')
+        logger.info(f'Creating Client "{acl.get_id()}".')
         
     mqClient.publish('$CONTROL/dynamic-security/v1', json.dumps(cmd))
 

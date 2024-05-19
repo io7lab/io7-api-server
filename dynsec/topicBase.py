@@ -33,9 +33,10 @@ def get_role_name(devId):
 class ACLBase:
     def __init__(self, devId):
         self.topics = get_topics(devId)
+        self.id = devId
 
-    def id(self):
-        return self.topics['id']
+    def get_id(self):
+        return self.id
 
     def get_topics(self):
         return self.topics
