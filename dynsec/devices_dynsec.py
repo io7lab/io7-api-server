@@ -1,7 +1,7 @@
 import json
 import logging
 from models import NewDevice, Device
-from dynsec.topicBase import get_topics, get_mgmt_topic, get_app_topics, get_role_name
+from dynsec.topicBase import ACLBase, get_role_name
 from dynsec.mqtt_conn import mqClient
 from environments import Settings
 
@@ -10,78 +10,31 @@ logger = logging.getLogger("uvicorn")
 logger.setLevel(settings.LOG_LEVEL)
 
 def add_dynsec_device(device: NewDevice):
-    topics = get_topics(device.devId)
+    acl = ACLBase(device.devId)
     cmd = {
         'commands': [
             {
                 'command': 'createRole',
-                'rolename': topics['rolename'],
+                'rolename': acl.id(),
                 'acls': [
-                    {
-                        'acltype': 'subscribePattern',
-                        'topic': topics['cmdTopic'],
-                        'priority': -1,
-                        'allow': True
-                    }, {
-                        'acltype': 'subscribePattern',
-                        'topic': topics['updateTopic'],
-                        'priority': -1,
-                        'allow': True
-                    }, {
-                        'acltype': 'subscribePattern',
-                        'topic': topics['rebootTopic'],
-                        'priority': -1,
-                        'allow': True
-                    }, {
-                        'acltype': 'subscribePattern',
-                        'topic': topics['resetTopic'],
-                        'priority': -1,
-                        'allow': True
-                    }, {
-                        'acltype': 'subscribePattern',
-                        'topic': topics['upgradeTopic'],
-                        'priority': -1,
-                        'allow': True
-                    }, {
-                        'acltype': 'publishClientSend',
-                        'topic': topics['logTopic'],
-                        'priority': -1,
-                        'allow': True
-                    }, {
-                        'acltype': 'publishClientSend',
-                        'topic': topics['metaTopic'],
-                        'priority': -1,
-                        'allow': True
-                    }, {
-                        'acltype': 'publishClientSend',
-                        'topic': topics['evtTopic'],
-                        'priority': -1,
-                        'allow': True
-                    }
+                        acl.subTopic('cmdTopic'),
+                        acl.subTopic('updateTopic'),
+                        acl.subTopic('rebootTopic'),
+                        acl.subTopic('resetTopic'),
+                        acl.subTopic('upgradeTopic'),
+                        acl.pubTopic('logTopic'),
+                        acl.pubTopic('metaTopic'),
+                        acl.pubTopic('evtTopic')
                 ]
             }
         ]
     }
 
     if device.type == 'gateway':
-        cmd['commands'][0]['acls'].append({
-            'acltype': 'publishClientSend',
-            'topic': topics['gw_query'],
-            'priority': -1,
-            'allow': True
-        })
-        cmd['commands'][0]['acls'].append({
-            'acltype': 'publishClientSend',
-            'topic': topics['gw_add'],
-            'priority': -1,
-            'allow': True
-        })
-        cmd['commands'][0]['acls'].append({
-            'acltype': 'subscribePattern',
-            'topic': topics['gw_list'],
-            'priority': -1,
-            'allow': True
-        })
+        cmd['commands'][0]['acls'].append(acl.pubTopic('gw_query'))
+        cmd['commands'][0]['acls'].append(acl.pubTopic('gw_add'))
+        cmd['commands'][0]['acls'].append(acl.subTopic('gw_list'))
+
     mqClient.publish('$CONTROL/dynamic-security/v1', json.dumps(cmd));
 
     if device.type == 'edge':
@@ -89,34 +42,34 @@ def add_dynsec_device(device: NewDevice):
             'commands': [
                 {
                     'command': 'addClientRole',
-                    'username': device.createdBy,
+                    'username': device.createdBy,       # This is the edge client's gateway
                     'rolename': device.devId
                 }
             ]
         }
-        logger.info(f'Creating Edge Client "{topics["id"]}".')
+        logger.info(f'Creating Edge Client "{acl.id()}".')
     else:
         cmd = {
             'commands': [
                 {
                     'command': 'createClient',
-                    'username': topics['id'],
+                    'username': acl.id(),
                     'password': device.password,
                     'roles': [
                         {
-                            'rolename': topics['rolename'],
+                            'rolename': acl.id(),
                             'priority': -1
                         }
                     ]
                 }
             ]
         }
-        logger.info(f'Creating Client "{topics["id"]}".')
+        logger.info(f'Creating Client "{acl.id()}".')
         
     mqClient.publish('$CONTROL/dynamic-security/v1', json.dumps(cmd))
 
 def delete_dynsec_role(role: str):
-    if role in ['admin', '$web', '$apps', '$io7_adm']:
+    if role in ['admin', '$apps', '$io7_adm']:
         logger.info(f'Cannot delete system role "{role}".')
         return
     cmd = {
