@@ -23,21 +23,39 @@ def get_topics(devId):
         'gw_query': gw_query_base.replace('+devId', devId),
         'gw_add': gw_add_base.replace('+devId', devId),
         'gw_list': gw_list_base.replace('+devId', devId),
-        'id': devId,
-        'rolename': devId
-    }
-
-def get_mgmt_topic():
-    return {
-        'mgmtTopic': 'iot3/+/mgmt/#'
-    }
-
-def get_app_topics():
-    return {
-        'subTopic': 'iot3/+/evt/#',
-        'pubTopic': 'iot3/+/cmd/#'
+        'mgmtTopics': 'iot3/+/mgmt/#',
+        'appSubTopic': 'iot3/+/evt/#',
+        'appPubTopic': 'iot3/+/cmd/#',
+        'id': devId
     }
 
 def get_role_name(devId):
     devId = devId.replace(':', '-')
     return devId
+
+class ACLBase:
+    def __init__(self, devId):
+        self.topics = get_topics(devId)
+        self.id = devId
+
+    def get_id(self):
+        return self.id
+
+    def get_topics(self):
+        return self.topics
+
+    def subTopic(self, t):
+        return {
+            'acltype': 'subscribePattern',
+            'topic': self.topics[t],
+            'priority': -1,
+            'allow': True
+        }
+    
+    def pubTopic(self, t):
+        return {
+            'acltype': 'publishClientSend',
+            'topic': self.topics[t],
+            'priority': -1,
+            'allow': True
+        }
