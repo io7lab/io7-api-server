@@ -1,6 +1,6 @@
 import json
 import logging
-from dynsec.topicBase import ACLBase, get_topics, get_mgmt_topic
+from dynsec.topicBase import ACLBase
 from dynsec.mqtt_conn import mqClient
 from environments import Settings
 
@@ -11,7 +11,6 @@ logger.setLevel(settings.LOG_LEVEL)
 acl = ACLBase('+')
 
 def add_apps_role():
-    #topics = get_app_topics()
     cmd = {
         'commands': [
             {
@@ -29,8 +28,6 @@ def add_apps_role():
     logger.info('Creating App Role $apps.')
     
 def add_io7_adm_role():
-    topics = get_topics('+')
-    topic2 = get_mgmt_topic()
     cmd = {
         'commands': [
             {
