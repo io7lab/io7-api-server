@@ -1,6 +1,6 @@
 import json
 import logging
-from dynsec.topicBase import get_app_topics, get_topics, get_mgmt_topic
+from dynsec.topicBase import ACLBase, get_topics, get_mgmt_topic
 from dynsec.mqtt_conn import mqClient
 from environments import Settings
 
@@ -8,25 +8,18 @@ settings = Settings()
 logger = logging.getLogger("uvicorn")
 logger.setLevel(settings.LOG_LEVEL)
 
+acl = ACLBase('+')
+
 def add_apps_role():
-    topics = get_app_topics()
+    #topics = get_app_topics()
     cmd = {
         'commands': [
             {
                 'command': 'createRole',
                 'rolename': '$apps',
                 'acls': [
-                    {
-                        'acltype': 'subscribePattern',
-                        'topic': topics['subTopic'],
-                        'priority': -1,
-                        'allow': True
-                    }, {
-                        'acltype': 'publishClientSend',
-                        'topic': topics['pubTopic'],
-                        'priority': -1,
-                        'allow': True
-                    }
+                    acl.subTopic('appSubTopic'),
+                    acl.pubTopic('appPubTopic')
                 ]
             }
         ]
@@ -44,27 +37,10 @@ def add_io7_adm_role():
                 'command': 'createRole',
                 'rolename': '$io7_adm',
                 'acls': [
-                    {
-                        'acltype': 'subscribePattern',
-                        'topic': topics['gw_add'],
-                        'priority': -1,
-                        'allow': True
-                    }, {
-                        'acltype': 'subscribePattern',
-                        'topic': topics['gw_query'],
-                        'priority': -1,
-                        'allow': True
-                    }, {
-                        'acltype': 'publishClientSend',
-                        'topic': topics['gw_list'],
-                        'priority': -1,
-                        'allow': True
-                    }, {
-                        'acltype': 'publishClientSend',
-                        'topic': topic2['mgmtTopic'],
-                        'priority': -1,
-                        'allow': True
-                    }
+                    acl.subTopic('gw_add'),
+                    acl.subTopic('gw_query'),
+                    acl.pubTopic('gw_list'),
+                    acl.pubTopic('mgmtTopics')
                 ]
             }
         ]

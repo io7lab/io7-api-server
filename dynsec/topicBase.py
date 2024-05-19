@@ -23,6 +23,9 @@ def get_topics(devId):
         'gw_query': gw_query_base.replace('+devId', devId),
         'gw_add': gw_add_base.replace('+devId', devId),
         'gw_list': gw_list_base.replace('+devId', devId),
+        'mgmtTopics': 'iot3/+/mgmt/#',
+        'appSubTopic': 'iot3/+/evt/#',
+        'appPubTopic': 'iot3/+/cmd/#',
         'id': devId
     }
 
@@ -56,17 +59,3 @@ class ACLBase:
             'priority': -1,
             'allow': True
         }
-
-    def mgmt_topic(self):
-        return {
-            'mgmtTopic': 'iot3/+/mgmt/#'
-        }
-
-    def app_topics(self):
-        return {
-            'subTopic': 'iot3/+/evt/#',
-            'pubTopic': 'iot3/+/cmd/#'
-        }
-
-    def id(self):
-        return self.id    
