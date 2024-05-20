@@ -29,10 +29,6 @@ def get_topics(devId):
         'id': devId
     }
 
-def get_role_name(devId):
-    devId = devId.replace(':', '-')
-    return devId
-
 class ACLBase:
     def __init__(self, devId):
         self.topics = get_topics(devId)

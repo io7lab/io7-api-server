@@ -1,7 +1,7 @@
 import json
 import logging
 from models import NewDevice, Device
-from dynsec.topicBase import ACLBase, get_role_name
+from dynsec.topicBase import ACLBase
 from dynsec.mqtt_conn import mqClient
 from environments import Settings
 
@@ -76,7 +76,7 @@ def delete_dynsec_role(role: str):
 	    'commands': [
 	        {
 	            'command': 'deleteRole',
-	            'rolename': get_role_name(role)
+	            'rolename': role
 	        }
 	    ]
     }
