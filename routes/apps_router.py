@@ -18,6 +18,11 @@ async def get_apps(jwt: str = Depends(authenticate)) -> dict:
 
 @router.post('/')
 async def add_app(newApp: NewIOTApp, jwt: str = Depends(authenticate)) -> IOTApp:
+    if newApp.appId.startswith('$'):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail = f"The Id({newApp.appId}) can not be registered for AppId."
+        )
     qryApp = apps_db.getOne(apps_db.qry.appId == newApp.appId)
     qryDevice = device_db.getOne(device_db.qry.devId == newApp.appId)
     if qryApp or qryDevice:

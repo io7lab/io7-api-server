@@ -103,6 +103,11 @@ async def get_devices(jwt: str = Depends(authenticate)) -> dict:
 
 @router.post('/')
 async def add_device(newDevice: NewDevice, jwt: str = Depends(authenticate)) -> Device:
+    if newDevice.devId.startswith('$'):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail = f"The Id({newDevice.devId}) can not be registered for Device/Gateway."
+        )
     if not newDevice.type in ['gateway', 'edge', 'device']:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
