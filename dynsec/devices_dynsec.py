@@ -11,7 +11,7 @@ logger.setLevel(settings.LOG_LEVEL)
 
 def add_dynsec_device(device: NewDevice):
     acl = ACLBase(device.devId)
-    cmd = {
+    dyn_cmd = {
         'commands': [
             {
                 'command': 'createRole',
@@ -31,14 +31,14 @@ def add_dynsec_device(device: NewDevice):
     }
 
     if device.type == 'gateway':
-        cmd['commands'][0]['acls'].append(acl.pubTopic('gw_query'))
-        cmd['commands'][0]['acls'].append(acl.pubTopic('gw_add'))
-        cmd['commands'][0]['acls'].append(acl.subTopic('gw_list'))
+        dyn_cmd['commands'][0]['acls'].append(acl.pubTopic('gw_query'))
+        dyn_cmd['commands'][0]['acls'].append(acl.pubTopic('gw_add'))
+        dyn_cmd['commands'][0]['acls'].append(acl.subTopic('gw_list'))
 
-    mqClient.publish('$CONTROL/dynamic-security/v1', json.dumps(cmd));
+    mqClient.publish('$CONTROL/dynamic-security/v1', json.dumps(dyn_cmd));
 
     if device.type == 'edge':
-        cmd = {
+        dyn_cmd = {
             'commands': [
                 {
                     'command': 'addClientRole',
@@ -49,7 +49,7 @@ def add_dynsec_device(device: NewDevice):
         }
         logger.info(f'Creating Edge Client "{acl.get_id()}".')
     else:
-        cmd = {
+        dyn_cmd = {
             'commands': [
                 {
                     'command': 'createClient',
@@ -66,25 +66,11 @@ def add_dynsec_device(device: NewDevice):
         }
         logger.info(f'Creating Client "{acl.get_id()}".')
         
-    mqClient.publish('$CONTROL/dynamic-security/v1', json.dumps(cmd))
+    mqClient.publish('$CONTROL/dynamic-security/v1', json.dumps(dyn_cmd))
 
-def delete_dynsec_role(role: str):
-    if role in ['admin', '$apps', '$io7_adm']:
-        logger.info(f'Cannot delete system role "{role}".')
-        return
-    cmd = {
-	    'commands': [
-	        {
-	            'command': 'deleteRole',
-	            'rolename': role
-	        }
-	    ]
-    }
-    mqClient.publish('$CONTROL/dynamic-security/v1', json.dumps(cmd))
-    logger.info(f'Deleting Role "{role}".')
 
 def delete_dynsec_device(device: str):
-    cmd = {
+    dyn_cmd = {
         'commands': [
             {
                 'command': 'deleteClient',
@@ -92,5 +78,5 @@ def delete_dynsec_device(device: str):
             }
         ]
     }
-    mqClient.publish('$CONTROL/dynamic-security/v1', json.dumps(cmd))
+    mqClient.publish('$CONTROL/dynamic-security/v1', json.dumps(dyn_cmd))
     logger.info(f'Deleting Device "{device}".')

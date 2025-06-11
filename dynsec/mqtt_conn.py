@@ -6,7 +6,7 @@ import os
 import json
 import asyncio
 import paho.mqtt.client as mqtt
-from environments import Settings, Database, dynsec_role_exists, get_dynsec_admin
+from environments import Settings, Database, dynsec_role_exists, dynsec_get_admin
 from models import Device, NewDevice
 
 settings = Settings()
@@ -25,7 +25,7 @@ def mqtt_dynsec_setup():
         add_apps_role()
     if not dynsec_role_exists('$io7_adm'):
         from dynsec.roles_dynsec import add_io7_adm_role, assign_role
-        admin_id = get_dynsec_admin()
+        admin_id = dynsec_get_admin()
         if admin_id:
             add_io7_adm_role()
             assign_role(admin_id, '$io7_adm')
