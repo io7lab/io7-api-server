@@ -33,6 +33,7 @@ async def add_user(user: NewUser) -> dict:
     Caution:
     - This endpoint will only work if no users exist in the system
     - Only one admin user can be created
+    - The password length needs to be at least 8 characters
     - The password will be hashed before storage
     - Store the password securely as it cannot be recovered
     
@@ -45,6 +46,11 @@ async def add_user(user: NewUser) -> dict:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Admin User exists already."
+        )
+    if len(user.password) < 8 :
+        raise HTTPException(
+            status_code=status.HTTP_411_LENGTH_REQUIRED,
+            detail=f"Password is too short"
         )
     user.password = create_hash(user.password)
     db.insert(user)
