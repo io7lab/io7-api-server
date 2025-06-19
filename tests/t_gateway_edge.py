@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+# This simulates a gateway adding an edge device
 import paho.mqtt.client as mqtt
 
 def on_connect(client, userdata, flags, rc):
@@ -16,4 +18,3 @@ client.on_message = on_message
 
 client.publish("iot3/gateway1/gateway/add", '{"d":{"devId": "client19"}}')
 client.publish("iot3/gateway1/gateway/query", '{"d":{"devices": "*"}}')
-
