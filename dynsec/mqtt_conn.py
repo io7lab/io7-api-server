@@ -8,6 +8,7 @@ import asyncio
 import paho.mqtt.client as mqtt
 from environments import Settings, Database, dynsec_role_exists, dynsec_get_admin
 from models import Device, NewDevice
+from .event_shadow import shadow_event
 
 settings = Settings()
 logger = logging.getLogger("uvicorn")
@@ -52,6 +53,8 @@ def on_message(client, userdata, msg):
         edges = [edge['devId'] for edge in edges]
         edges.append(topic[1])
         client.publish(f"iot3/{topic[1]}/gateway/list", json.dumps(edges))
+    elif topic[2] == 'evt' and topic[3] is not 'connection':    # shadowing/logging the device event
+        shadow_event(topic[1], msg)
         
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
@@ -60,6 +63,7 @@ def on_connect(client, userdata, flags, rc):
         client.subscribe('$CONTROL/dynamic-security/v1/response')
         client.subscribe('iot3/+/gateway/add')
         client.subscribe('iot3/+/gateway/query')
+        client.subscribe('iot3/+/evt/#')
     else:
         logger.warn("MQTT Connected with RC : " + str(rc))
 
