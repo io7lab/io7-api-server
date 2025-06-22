@@ -33,6 +33,8 @@ class Database:
             return self.db.upsert(obj.dict(), self.qry.devId == obj.devId)
         elif hasattr(obj, 'appId'):
             return self.db.upsert(obj.dict(), self.qry.appId == obj.appId)
+        elif hasattr(obj, 'key'):
+            return self.db.upsert(obj.dict(), self.qry.key == obj.key)
 
     def getOne(self, cond: QueryLike) -> BaseModel:
         obj = self.db.search(cond)
