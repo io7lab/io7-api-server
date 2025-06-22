@@ -13,7 +13,6 @@ from environments import Settings
 settings = Settings()
 logger = logging.getLogger("uvicorn")
 logger.setLevel(settings.LOG_LEVEL)
-kst=timezone(timedelta(hours=9))
 
 device_db = Database(Device.Settings.name)
 apps_db = Database(IOTApp.Settings.name)
@@ -271,7 +270,7 @@ async def add_device(newDevice: NewDevice, jwt: str = Depends(authenticate)) -> 
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Invalid Gateway({newDevice.createdBy})"
             )
-    newDevice.createdDate = newDevice.createdDate.replace(tzinfo=timezone.utc).astimezone(tz=kst)
+    newDevice.createdDate = newDevice.createdDate.replace(tzinfo=timezone.utc)
     newDevice.createdDate = str(newDevice.createdDate.strftime('%Y-%m-%d %H:%M:%S'))
     device_db.insert(newDevice)
     add_dynsec_device(newDevice)

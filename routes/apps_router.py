@@ -11,7 +11,6 @@ from dynsec.roles_dynsec import delete_dynsec_role
 apps_db = Database(IOTApp.Settings.name)
 device_db = Database(Device.Settings.name)
 router = APIRouter(tags=['Apps'])
-kst=timezone(timedelta(hours=9))
 
 @router.get('/', response_model=List[IOTApp])
 async def get_apps(jwt: str = Depends(authenticate)) -> dict:
@@ -60,7 +59,7 @@ async def add_app(newApp: NewIOTApp, jwt: str = Depends(authenticate)) -> IOTApp
             detail=detail
         )
 
-    newApp.createdDate = newApp.createdDate.replace(tzinfo=timezone.utc).astimezone(tz=kst)
+    newApp.createdDate = newApp.createdDate.replace(tzinfo=timezone.utc)
     newApp.createdDate = str(newApp.createdDate.strftime('%Y-%m-%d %H:%M:%S'))
     add_dynsec_app(newApp)
     apps_db.insert(newApp)
