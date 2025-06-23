@@ -18,7 +18,7 @@ device_db = Database(Device.Settings.name)
 apps_db = Database(IOTApp.Settings.name)
 router = APIRouter(tags=['Devices'])
 
-@router.get('/reboot/{devId}')
+@router.get('/{devId}/reboot')
 async def reboot_device(devId: str, jwt: str = Depends(authenticate)) -> dict:
     """
     Remotely reboot a device by its ID.
@@ -46,7 +46,7 @@ async def reboot_device(devId: str, jwt: str = Depends(authenticate)) -> dict:
     reboot_device_action(devId)
     return {"message": "Rebooting Device", "devId": devId}
 
-@router.get('/reset/{devId}')
+@router.get('/{devId}/reset')
 async def reset_device(devId: str, jwt: str = Depends(authenticate)) -> dict:
     """
     Reset a device to factory settings by its ID.
@@ -104,7 +104,7 @@ async def update_metadata(devId: str, metaData: dict, jwt: str = Depends(authent
     update_metadata_action(devId, metaData)
     return {"message": "Metadata being updated", "devId": devId}
 
-@router.put('/upgrade/{devId}')
+@router.put('/{devId}/upgrade')
 async def upgrade_firmware(devId: str, fwInfo: FirmwareInfo, jwt: str = Depends(authenticate)) -> dict:
     """
     Upgrade the firmware of a specific device.
