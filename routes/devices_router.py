@@ -75,7 +75,7 @@ async def reset_device(devId: str, jwt: str = Depends(authenticate)) -> dict:
     reset_device_action(devId)
     return {"message": "Factory Resetting Device", "devId": devId}
 
-@router.put('/update/{devId}')
+@router.put('/{devId}/updateMeta')
 async def update_metadata(devId: str, metaData: dict, jwt: str = Depends(authenticate)) -> dict:
     """
     Update the metadata for a specific device.
