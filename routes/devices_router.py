@@ -1,14 +1,13 @@
 from typing import List
 import logging
-from fastapi import APIRouter, HTTPException, status, Depends
-from datetime import timezone, timedelta
+from fastapi import APIRouter, HTTPException, status, Depends, Body
+from datetime import timezone, timedelta, datetime
 from secutils import authenticate
-from environments import Database
 from models import Device, NewDevice, IOTApp, FirmwareInfo
 from dynsec.devices_dynsec import add_dynsec_device, delete_dynsec_device
 from dynsec.roles_dynsec import delete_dynsec_role
 from dynsec.devices_actions import reboot_device_action, reset_device_action, update_metadata_action, upgrade_firmware_action
-from environments import Settings
+from environments import Settings, Database, dynsec_all_devices, dynsec_get_device
 
 settings = Settings()
 logger = logging.getLogger("uvicorn")
@@ -94,7 +93,6 @@ async def update_metadata(devId: str, metaData: dict, jwt: str = Depends(authent
     Returns:
     - Confirmation message of the metadata update command
     """
-    device = device_db.getOne(device_db.qry.devId == devId)
     qryDevice = device_db.getOne(device_db.qry.devId == devId)
     if not qryDevice:
         raise HTTPException(
@@ -171,6 +169,7 @@ async def del_device(devId: str, jwt: str = Depends(authenticate)) -> dict:
     - For gateway devices, all connected edge devices will also be deleted
     - All device access permissions will be permanently removed
     - Any services depending on this device will stop working
+    - Deleting a gateway will delete all the Edge devices it created
     
     Parameters:
     - devId: The unique identifier of the device to delete
@@ -178,7 +177,7 @@ async def del_device(devId: str, jwt: str = Depends(authenticate)) -> dict:
     Returns:
     - Confirmation message with the deleted device ID
     """
-    device  = device_db.getOne(device_db.qry.devId == devId)    # this should be come before deletion
+    device  = device_db.getOne(device_db.qry.devId == devId)    # this should come before deletion
     doc_ids = device_db.delete(device_db.qry.devId == devId)
     if not doc_ids or len(doc_ids) == 0:
         raise HTTPException(
@@ -189,30 +188,65 @@ async def del_device(devId: str, jwt: str = Depends(authenticate)) -> dict:
         edges = device_db.get(device_db.qry.createdBy == devId)
         for edge in edges:
             device_db.delete(device_db.qry.devId == edge['devId'])
-            delete_dynsec_role(edge['devId'])       # edge roles, edge device consists of role only
+            delete_dynsec_role(edge['devId'])       # edge roles; edge devices consist of roles only
         delete_dynsec_role(devId)                   # gateway role
         delete_dynsec_device(devId)                 # gateway device
     elif device['type'] == 'edge':
-        device_db.delete(device_db.qry.devId == devId)
         delete_dynsec_role(devId)
     else:
-        device_db.delete(device_db.qry.devId == devId)
         delete_dynsec_device(devId)
         delete_dynsec_role(devId)
     return {"message": "Device deleted successfully", "devId": devId}
 
-@router.get('/', response_model=List[Device])
-async def get_devices(jwt: str = Depends(authenticate)) -> dict:
+# Returns Device objects with 'toFix' attribute, so return type is List[dict] instead of List[Device]
+@router.get('/', response_model=List[dict])
+async def get_devices(broken:bool = False, jwt: str = Depends(authenticate)) -> List[dict]:
     """
     Retrieve a list of all registered devices.
     
     This endpoint returns all devices registered in the system including gateways, edge devices, and regular devices.
     Authentication is required to access this endpoint.
+
+    Cautions:
+    - Device authentication & authorization is managed by the MQTT Dynamic Security Plugin
+    - Device metadata is stored in the TinyDB database
+    - Inconsistencies between these two data sources can result in broken device states
+    - Use `?broken=true` to retrieve only devices with database/MQTT configuration mismatches
+    
+    Parameters:
+    - broken: Optional argument to get the broken devices
     
     Returns:
     - A list of Device objects containing device details
     """
-    return device_db.getAll()
+    if broken:
+        dynsec_devices = dynsec_all_devices()
+        db_devices = device_db.getAll()
+        mal_dynsec_devices = []
+        mal_db_devices = []
+        for dyn_device in dynsec_devices:
+            d = device_db.getOne(device_db.qry.devId == dyn_device)
+            if d is None:
+                db_d = Device(devId = dyn_device).dict()
+                db_d['toFix'] = 'tinydb'
+                mal_dynsec_devices.append(db_d)
+        for db_device in db_devices:
+            d = dynsec_get_device(db_device['devId'])
+            if d is None:
+                db_d = dict(db_device)
+                db_d['toFix'] = 'dynsec'
+                mal_db_devices.append(db_d)
+        return(mal_db_devices + mal_dynsec_devices)
+    else:
+        device_list = []
+        db_devices = device_db.getAll()
+        for db_device in db_devices:
+            d = dynsec_get_device(db_device['devId'])
+            db_d = dict(db_device)
+            if d is None and db_d['type'] != 'edge':
+                db_d['toFix'] = 'dynsec'
+            device_list.append(db_d)
+        return device_list
 
 @router.post('/')
 async def add_device(newDevice: NewDevice, jwt: str = Depends(authenticate)) -> Device:
@@ -238,7 +272,7 @@ async def add_device(newDevice: NewDevice, jwt: str = Depends(authenticate)) -> 
     if newDevice.devId.startswith('$') or newDevice.devId == 'admin':
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail = f"The Id({newDevice.devId}) can not be registered for Device/Gateway."
+            detail = f"The Id({newDevice.devId}) cannot be registered for Device/Gateway."
         )
     if not newDevice.type in ['gateway', 'edge', 'device']:
         raise HTTPException(
@@ -253,15 +287,15 @@ async def add_device(newDevice: NewDevice, jwt: str = Depends(authenticate)) -> 
         else:
             detail = f"The Id({newDevice.devId}) is already registered for Device/Gateway."
         if type(jwt) == dict:
-            # if jwt is dict, then it means it is called by REST API
-            # if not, then it is called by MQTT
+            # If jwt is a dict, then it means it is called by REST API
+            # if not, it is called by MQTT
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=detail
             )
         else:
             logger.error(detail)
-            return          # the edge device name is already taken
+            return          # the device name for edge is already taken
 
     if newDevice.type == 'edge':
         gw = device_db.getOne(device_db.qry.devId == newDevice.createdBy)
@@ -272,6 +306,98 @@ async def add_device(newDevice: NewDevice, jwt: str = Depends(authenticate)) -> 
             )
     newDevice.createdDate = newDevice.createdDate.replace(tzinfo=timezone.utc)
     newDevice.createdDate = str(newDevice.createdDate.strftime('%Y-%m-%d %H:%M:%S'))
+    print(newDevice)
     device_db.insert(newDevice)
     add_dynsec_device(newDevice)
     return newDevice.dict()
+
+@router.patch('/{devId}/update')
+async def update_device(
+    devId: str, updateData: dict = Body(
+        {
+            "password": "str",
+            "type": "str",
+            "devDesc": "str",
+            "devMaker": "str",
+            "devSerial": "str",
+            "devModel": "str",
+            "devHwVer": "str",
+            "devFwVer": "str",
+            "createdBy": "str"
+        }
+    ),
+    jwt: str = Depends(authenticate)) -> Device:
+    """
+    Update device information and fix broken device states.
+    
+    This endpoint allows updating device metadata and fixing inconsistencies between the database
+    and MQTT dynamic security configurations. It handles various scenarios including complete updates,
+    password-only fixes for missing MQTT configurations, and database-only repairs.
+    Authentication is required to access this endpoint.
+    
+    Caution:
+    - Device IDs cannot start with '$' or be named 'admin'
+    - Password is only allowed when recreating missing MQTT dynamic security configurations
+    - Missing MQTT configurations will be recreated if password is provided
+    - Device type must be one of 'gateway', 'edge', or 'device'
+    
+    Parameters:
+    - devId: The unique identifier of the device to update
+    - updateData: Dictionary containing the fields to update (password, type, devDesc, etc.)
+    
+    Returns:
+    - The updated Device object with current information
+    """
+    if devId.startswith('$') or devId == 'admin':
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail = f"The Id({devId}) cannot be registered for Device/Gateway."
+        )
+    if 'type' in updateData and not updateData['type'] in ['gateway', 'edge', 'device']:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid Device Type({updateData['type']})"
+        )
+
+    db_device = device_db.getOne(device_db.qry.devId == devId)
+    dyn_device = dynsec_get_device(devId)
+    if db_device: 
+        if dyn_device:
+            # Both db_device & dyn_device found; update the information in TinyDB 
+            if 'password' in updateData:
+                # Filter out the password change since it's not allowed
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Device token cannot be changed"
+                )
+            else: 
+                # Update the information in TinyDB
+                for key, value in updateData.items():
+                    if key in db_device:  # Only update existing keys
+                        db_device[key] = value
+                theDevice = Device(**db_device)
+                theDevice.devId=devId
+                theDevice.createdDate = str(theDevice.createdDate.strftime('%Y-%m-%d %H:%M:%S'))
+                device_db.insert(theDevice)
+                return theDevice
+        elif 'password' in updateData:
+            # No dyn_device found; create dyn_device
+            db_device['password'] = updateData['password']
+            newDevice = NewDevice(**db_device)
+            add_dynsec_device(newDevice)
+            return newDevice
+        else:
+            # No dyn_device found but can't create it since no password is given
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="No change was made"
+            )
+    else:
+        # dyn_device exists but no db_device found; filling in the information
+        updateData['devId'] = devId
+        updateData['createdBy'] = updateData['createdBy'] if 'createdBy' in updateData else 'admin'
+        updateData['createdDate'] = datetime.now(timezone.utc)
+        theDevice = Device(**updateData)
+        theDevice.createdDate = str(theDevice.createdDate.strftime('%Y-%m-%d %H:%M:%S'))
+        device_db.insert(theDevice)
+        return theDevice

@@ -17,4 +17,5 @@ client.on_connect = on_connect
 client.on_message = on_message
 
 client.publish("iot3/gateway1/gateway/add", '{"d":{"devId": "client19"}}')
+client.publish("iot3/gateway1/gateway/add", '{"d":{"devId": "client9"}}')
 client.publish("iot3/gateway1/gateway/query", '{"d":{"devices": "*"}}')
