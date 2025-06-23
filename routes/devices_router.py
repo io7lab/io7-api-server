@@ -306,7 +306,6 @@ async def add_device(newDevice: NewDevice, jwt: str = Depends(authenticate)) -> 
             )
     newDevice.createdDate = newDevice.createdDate.replace(tzinfo=timezone.utc)
     newDevice.createdDate = str(newDevice.createdDate.strftime('%Y-%m-%d %H:%M:%S'))
-    print(newDevice)
     device_db.insert(newDevice)
     add_dynsec_device(newDevice)
     return newDevice.dict()

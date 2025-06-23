@@ -41,7 +41,9 @@ def dynsec_get_client_roleId(clientId):
     if c_id := dynsec_get_client(clientId):
         if role := next((r for r in c_id.get("roles") if r.get("rolename") == clientId), None):
             return role.get('rolename', None)
-        elif role := next((r for r in c_id.get("roles") if r.get("rolename").startswith("$apps")), None):
+        elif role := next((r for r in c_id.get("roles") if r.get("rolename") == "$apps"), None):
+            return role.get('rolename', None)
+        elif role := next((r for r in c_id.get("roles") if r.get("rolename") == f"$apps_{clientId}"), None):
             return role.get('rolename', None)
     return None
 
