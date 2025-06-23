@@ -1,30 +1,63 @@
 from typing import List
-from fastapi import APIRouter, HTTPException, status, Depends
-from datetime import timezone, timedelta
+from fastapi import APIRouter, HTTPException, status, Depends, Body
+from datetime import timezone, timedelta, datetime
 
 from models import IOTApp, NewIOTApp, MemberDevice, Device
 from secutils import authenticate
-from environments import Database, dynsec_get_client_role, dynsec_get_appId
+from environments import Database, dynsec_get_client_role, dynsec_get_appId, dynsec_all_appIds
 from dynsec.apps_dynsec import add_dynsec_app, delete_dynsec_app, add_dynsec_member, remove_dynsec_member, update_dynsec_members
 from dynsec.roles_dynsec import delete_dynsec_role
 
 apps_db = Database(IOTApp.Settings.name)
-device_db = Database(Device.Settings.name)
+devices_db = Database(Device.Settings.name)
 router = APIRouter(tags=['Apps'])
 
-@router.get('/', response_model=List[IOTApp])
-async def get_apps(jwt: str = Depends(authenticate)) -> dict:
+@router.get('/', response_model=List[dict])
+async def get_apps(broken:bool = False, jwt: str = Depends(authenticate)) -> dict:
     """
     Retrieve a list of all registered IOT application IDs.
     
     This endpoint returns all application IDs registered in the system.
     The type of an application ID is IOTApp in io7 platform.
     Authentication is required to access this endpoint.
+
+    Cautions:
+    - AppId authentication & authorization is managed by the MQTT Dynamic Security Plugin
+    - AppId metadata is stored in the TinyDB database
+    - Inconsistencies between these two data sources can result in broken device states
+    - Use `?broken=true` to retrieve only AppId with database/MQTT configuration mismatches
     
     Returns:
     - A list of IOTApp objects containing application details
     """
-    return apps_db.getAll()
+    if broken:
+        dynsec_apps = dynsec_all_appIds()
+        db_apps = apps_db.getAll()
+        mal_dynsec_apps = []
+        mal_db_apps = []
+        for dyn_app in dynsec_apps:
+            a = apps_db.getOne(apps_db.qry.appId == dyn_app)
+            if a is None:
+                db_a = IOTApp(appId = dyn_app).dict()
+                db_a['toFix'] = 'tinydb'
+                mal_dynsec_apps.append(db_a)
+        for db_app in db_apps:
+            a = dynsec_get_appId(db_app['appId'])
+            if a is None:
+                db_a = dict(db_app)
+                db_a['toFix'] = 'dynsec'
+                mal_db_apps.append(db_a)
+        return(mal_db_apps + mal_dynsec_apps)
+    else:
+        app_list = []
+        db_apps = apps_db.getAll()
+        for db_app in db_apps:
+            a = dynsec_get_appId(db_app['appId'])
+            db_a = dict(db_app)
+            if a is None:
+                db_a['toFix'] = 'dynsec'
+            app_list.append(db_a)
+        return app_list
 
 @router.post('/')
 async def add_app(newApp: NewIOTApp, jwt: str = Depends(authenticate)) -> IOTApp:
@@ -48,7 +81,7 @@ async def add_app(newApp: NewIOTApp, jwt: str = Depends(authenticate)) -> IOTApp
             detail = f"The Id({newApp.appId}) can not be registered for AppId."
         )
     qryApp = apps_db.getOne(apps_db.qry.appId == newApp.appId)
-    qryDevice = device_db.getOne(device_db.qry.devId == newApp.appId)
+    qryDevice = devices_db.getOne(devices_db.qry.devId == newApp.appId)
     if qryApp or qryDevice:
         if qryApp:
             detail = f"The Id({newApp.appId}) is already registered for AppId."
@@ -83,7 +116,7 @@ async def get_application(appId: str, jwt: str = Depends(authenticate)) -> IOTAp
     if not app:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"AppID(appId:{appId}) does not exist"
+            detail=f"AppID({appId}) does not exist"
         )
     return app
 
@@ -110,7 +143,7 @@ async def del_appId(appId: str, jwt: str = Depends(authenticate)) -> dict:
     if not app:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"AppId(appId:{appId}) does not exist"
+            detail=f"AppId({appId}) does not exist"
         )
     
     if app.get('restricted', None):
@@ -296,3 +329,86 @@ async def updateMembers(appId: str, members: List[MemberDevice], jwt: str = Depe
 
     update_dynsec_members(appId, members)
     return {"message": "Members are updated successfully", "appId": appId}
+
+
+@router.patch('/{appId}/update')
+async def update_apps(
+    appId: str, updateData: dict = Body(
+        {
+            "password": "str",
+            "restricted": "false",
+            "appDesc": "str"
+        }
+    ),
+    jwt: str = Depends(authenticate)) -> IOTApp:
+    """
+    Update application information and fix broken application states.
+    
+    This endpoint allows updating application metadata and fixing inconsistencies between the database
+    and MQTT dynamic security configurations. It handles various scenarios including complete updates,
+    password-only fixes for missing MQTT configurations, and database-only repairs.
+    Authentication is required to access this endpoint.
+    
+    Caution:
+    - Application IDs cannot start with '$' or be named 'admin'
+    - Password is only allowed when recreating missing MQTT dynamic security configurations
+    - Missing MQTT configurations will be recreated if password is provided
+    - The restricted field controls whether the application can have member devices
+    
+    Parameters:
+    - appId: The unique identifier of the application to update
+    - updateData: Dictionary containing the fields to update (password, restricted, appDesc, etc.)
+    
+    Returns:
+    - The updated IOTApp object with current information
+    """
+    if appId.startswith('$') or appId == 'admin':
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail = f"The Id({appId}) cannot be registered for AppId."
+        )
+
+    db_app = apps_db.getOne(apps_db.qry.appId == appId)
+    dyn_app = dynsec_get_appId(appId)
+    if db_app: 
+        if dyn_app:
+            # Both db_app & dyn_app found; update the information in TinyDB 
+            if 'password' in updateData:
+                # Filter out the password change since it's not allowed
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="AppId token cannot be changed"
+                )
+            else: 
+                # Update the information in TinyDB
+                for key, value in updateData.items():
+                    if key in db_app:  # Only update existing keys
+                        db_app[key] = value
+                #print(db_app)
+                theApp = IOTApp(**db_app)
+                theApp.appId=appId
+                theApp.createdBy='admin'
+                theApp.createdDate = str(theApp.createdDate.strftime('%Y-%m-%d %H:%M:%S'))
+                apps_db.insert(theApp)
+                return theApp
+        elif 'password' in updateData:
+            # No dyn_app found; create dyn_app
+            db_app['password'] = updateData['password']
+            newApp = NewIOTApp(**db_app)
+            add_dynsec_app(newApp)
+            return newApp
+        else:
+            # No dyn_app found but can't create it since no password is given
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="No change was made"
+            )
+    else:
+        # dyn_app exists but no db_app found; filling in the metadata information
+        updateData['appId'] = appId
+        updateData['createdBy'] = 'admin'
+        updateData['createdDate'] = datetime.now(timezone.utc)
+        theApp = IOTApp(**updateData)
+        theApp.createdDate = str(theApp.createdDate.strftime('%Y-%m-%d %H:%M:%S'))
+        apps_db.insert(theApp)
+        return theApp
