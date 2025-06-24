@@ -4,7 +4,7 @@ import redis
 import requests
 import time
 import logging
-from environments import Settings
+from environments import Settings, get_config
 
 settings = Settings()
 logger = logging.getLogger("uvicorn")
@@ -18,8 +18,8 @@ redisClient = redis.Redis(
 influxdb_host=getattr(settings, 'INFLUXDB_HOST', 'influxdb')
 influxdb_port=getattr(settings, 'INFLUXDB_PORT', 8086)
 influxdb_url = f'http://{influxdb_host}:{influxdb_port}/write?db=bucket01'
-token="M8dL7g6k5YVrteTh34leNHns_GUGjtEPmkw2WixVJFA4RUpuIx_whio_ifg8NI8IRtU5iLwD8jYr4uq4sGmVHQ=="
-influxdb_header = {"Authorization": f"Token {token}"}
+influxdb_token=get_config('influxdb_token')
+influxdb_header = {"Authorization": f"Token {influxdb_token}"}
 # TODO:
 # http/https
 # bucket info

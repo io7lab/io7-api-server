@@ -10,3 +10,4 @@ from environments.dynsec_db import (
     dynsec_all_devices,
     dynsec_all_appIds
 )
+from environments.utils import get_config
