@@ -48,7 +48,6 @@ def set_fieldset(fields: str) -> bool:
     if there is a blank in the name like 'room temperature, humidity, lux, brightness',
     it will be ignored
     """
-    logger.debug('here')
     try:
         influxLogParams['fieldsets'] = [f.strip() for f in fields.split(',') if ' ' not in f.strip()]
         value=str(influxLogParams['fieldsets']).replace('[', '').replace(']', '').replace("'", '')
