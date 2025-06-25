@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Body, Depends, status
 
 from models import ConfigVar
 from secutils import authenticate
-from environments import Database
+from environments import Database, set_fieldset, set_monitored
 
 config_db = Database('config_var')
 router = APIRouter(tags=['Config'])
@@ -43,7 +43,7 @@ async def get_var(key: str, jwt: str = Depends(authenticate)) -> ConfigVar:
     )
     return value 
 
-@router.put('/')
+@router.post('/')
 async def set_configs(vars: List[ConfigVar], jwt: str = Depends(authenticate)) -> dict:
     """
     Register all customizable configuration variables.
@@ -70,6 +70,63 @@ async def set_configs(vars: List[ConfigVar], jwt: str = Depends(authenticate)) -
     except Exception as e:
         return {"status":"error", "Exception": type(e).__name__}
 
+@router.post('/monitored_fieldsets')
+async def set_monitored_fields(
+    fields: dict = Body(
+        ...,
+        example= {
+            "fieldsets" : "temperature, humidity"
+        }
+    ), jwt: str = Depends(authenticate)) -> dict:
+    """
+    Configures the event data attributes to be logged into influxdb
+    
+    This endpoint sets the list of event data attributes that will logged into influxdb
+    Authentication is required to access this endpoint.
+    
+    Parameters:
+    - fields: a list of attributes
+
+    Caution:
+    This sets the list of attributes to be monitored for logging
+    
+    Returns:
+    - A JSON object with processing status.
+    """ 
+    try:
+        set_fieldset(fields=fields['fieldsets'])
+        return {"status":"ok"}
+    except Exception as e:
+        return {"status":"error", "Exception": type(e).__name__}
+
+@router.post('/monitored_devices')
+async def set_monitored_devices(
+    devices: dict = Body(
+        ...,
+        example= {
+            "devices" : "thermo1, lamp1"
+        }
+    ), jwt: str = Depends(authenticate)) -> dict:
+    """
+    Configures the list of devices to moniter to log into influxdb
+    
+    This endpoint sets the list of devices that will logged into influxdb
+    Authentication is required to access this endpoint.
+    
+    Parameters:
+    - devices: a list of attributes
+
+    Caution:
+    This sets the list of attributes to be monitored for logging
+    
+    Returns:
+    - A JSON object with processing status.
+    """
+    try:
+        set_monitored(devices=devices['devices'])
+        return {"status":"ok"}
+    except Exception as e:
+        return {"status":"error", "Exception": type(e).__name__}
 
 @router.patch('/')
 async def update_configs(vars: List[ConfigVar], jwt: str = Depends(authenticate)) -> dict:

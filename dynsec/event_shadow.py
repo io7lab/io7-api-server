@@ -4,7 +4,7 @@ import redis
 import requests
 import time
 import logging
-from environments import Settings, get_config
+from environments import Settings, get_config, get_fieldset, is_monitored
 
 settings = Settings()
 logger = logging.getLogger("uvicorn")
@@ -18,13 +18,9 @@ redisClient = redis.Redis(
 influxdb_host=getattr(settings, 'INFLUXDB_HOST', 'influxdb')
 influxdb_port=getattr(settings, 'INFLUXDB_PORT', 8086)
 influxdb_url = f'http://{influxdb_host}:{influxdb_port}/write?db=bucket01'
+# TODO http vs https
 influxdb_token=get_config('influxdb_token')
 influxdb_header = {"Authorization": f"Token {influxdb_token}"}
-# TODO:
-# http/https
-# bucket info
-# header
-# dataselection
 
 def isNumber(n):
     try:
@@ -33,19 +29,31 @@ def isNumber(n):
     except:
         return False
 
+def add_field_set(msg_json):
+    field_set = ''
+    for field in get_fieldset():
+        if field in msg_json['d'] and isNumber(msg_json['d'][field]):
+            field_set += ',' if len(field_set) > 0 else ''
+            field_set += f"{field}={msg_json['d'][field]}"
+    return field_set
+
 def shadow_event_thread(device, msg):
     msg_json = json.loads(msg.payload)
     msg_json['t'] = int(time.time())
     redisClient.set(device, json.dumps(msg_json))
-    data=f"alldevices,device={device} "
-    if 'd' in msg_json:
-        if 'temperature' in msg_json['d'] and isNumber(msg_json['d']['temperature']):
-            data += f"temperature={msg_json['d']['temperature']}"
-        if 'humidity' in msg_json['d'] and isNumber(msg_json['d']['humidity']):
-            data += f",humidity={msg_json['d']['humidity']}"
 
-    rc= requests.post(url=influxdb_url, data=data, headers=influxdb_header)
-    #logger.debug(f"Shadowing and Logging : {device} => {json.dumps(msg_json)}")
+    if is_monitored(device) is False:      # retrun if the device is not listed for logging
+        return
+
+    line_data = ''
+    if 'd' in msg_json:
+        line_data += add_field_set(msg_json)
+
+    if len(line_data) == 0:     # no data to log, just return
+        return
+    line_data=f"alldevices,device={device} " + line_data
+    rc= requests.post(url=influxdb_url, data=line_data, headers=influxdb_header)
+    #logger.debug(f"Logging : {device} => {line_data}")
 
 def shadow_event(device, msg):
     executor.submit(shadow_event_thread, device, msg)

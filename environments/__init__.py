@@ -10,4 +10,10 @@ from environments.dynsec_db import (
     dynsec_all_devices,
     dynsec_all_appIds
 )
-from environments.utils import get_config
+from environments.utils import (
+    get_config,
+    is_monitored,
+    get_fieldset,
+    set_fieldset,
+    set_monitored
+)
