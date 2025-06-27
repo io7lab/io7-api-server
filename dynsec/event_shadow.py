@@ -17,8 +17,8 @@ redisClient = redis.Redis(
 
 influxdb_host=getattr(settings, 'INFLUXDB_HOST', 'influxdb')
 influxdb_port=getattr(settings, 'INFLUXDB_PORT', 8086)
-influxdb_url = f'http://{influxdb_host}:{influxdb_port}/write?db=bucket01'
-# TODO http vs https
+influxdb_proto=getattr(settings, 'INFLUXDB_PROTOCOL', 'http')
+influxdb_url = f'{influxdb_proto}://{influxdb_host}:{influxdb_port}/write?db=bucket01'
 influxdb_token=get_config('influxdb_token')
 influxdb_header = {"Authorization": f"Token {influxdb_token}"}
 
