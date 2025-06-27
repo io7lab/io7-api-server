@@ -21,6 +21,7 @@ influxdb_proto=getattr(settings, 'INFLUXDB_PROTOCOL', 'http')
 influxdb_url = f'{influxdb_proto}://{influxdb_host}:{influxdb_port}/write?db=bucket01'
 influxdb_token=get_config('influxdb_token')
 influxdb_header = {"Authorization": f"Token {influxdb_token}"}
+cert_verify = False if influxdb_proto == "http" else "../certs/ca.pem"
 
 def isNumber(n):
     try:
@@ -52,7 +53,7 @@ def shadow_event_thread(device, msg):
     if len(line_data) == 0:     # no data to log, just return
         return
     line_data=f"alldevices,device={device} " + line_data
-    rc= requests.post(url=influxdb_url, data=line_data, headers=influxdb_header)
+    rc= requests.post(url=influxdb_url, data=line_data, headers=influxdb_header, verify=cert_verify)
     #logger.debug(f"Logging : {device} => {line_data}")
 
 def shadow_event(device, msg):

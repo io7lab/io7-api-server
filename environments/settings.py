@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     MQTT_HOST: Optional[str] = "127.0.0.1"  # MQTT Host
     MQTT_PORT: Optional[int] = 1883         # MQTT Port
     MQTT_SSL_CERT: Optional[str] = None     # MQTT SSL Cert Path
+    INFLUXDB_PROTOCOL: Optional[str] = None    # INFLUXDB Access Protocol
     LOG_LEVEL: Optional[str] = "INFO"       # Log Level
 
     class Config:
