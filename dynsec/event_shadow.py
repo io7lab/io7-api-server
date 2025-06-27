@@ -5,6 +5,10 @@ import requests
 import time
 import logging
 from environments import Settings, get_config, get_fieldset, is_monitored
+import urllib3
+from urllib3.exceptions import InsecureRequestWarning
+# Suppress only the insecure TLS warning from urllib3
+urllib3.disable_warnings(InsecureRequestWarning)
 
 settings = Settings()
 logger = logging.getLogger("uvicorn")
@@ -21,7 +25,6 @@ influxdb_proto=getattr(settings, 'INFLUXDB_PROTOCOL', 'http')
 influxdb_url = f'{influxdb_proto}://{influxdb_host}:{influxdb_port}/write?db=bucket01'
 influxdb_token=get_config('influxdb_token')
 influxdb_header = {"Authorization": f"Token {influxdb_token}"}
-cert_verify = False if influxdb_proto == "http" else "../certs/ca.pem"
 
 def isNumber(n):
     try:
@@ -53,7 +56,7 @@ def shadow_event_thread(device, msg):
     if len(line_data) == 0:     # no data to log, just return
         return
     line_data=f"alldevices,device={device} " + line_data
-    rc= requests.post(url=influxdb_url, data=line_data, headers=influxdb_header, verify=cert_verify)
+    rc = requests.post(url=influxdb_url, data=line_data, headers=influxdb_header, verify=False)
     #logger.debug(f"Logging : {device} => {line_data}")
 
 def shadow_event(device, msg):
