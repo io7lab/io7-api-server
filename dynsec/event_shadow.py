@@ -43,7 +43,7 @@ def add_field_set(msg_json):
 
 def shadow_event_thread(device, msg):
     msg_json = json.loads(msg.payload)
-    msg_json['t'] = int(time.time())
+    msg_json['t'] = int(time.time()*1000)
     redisClient.set(device, json.dumps(msg_json))
 
     if is_monitored(device) is False:      # retrun if the device is not listed for logging
