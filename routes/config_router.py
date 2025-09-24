@@ -3,9 +3,8 @@ from fastapi import APIRouter, HTTPException, Body, Depends, status
 
 from models import ConfigVar
 from secutils import authenticate
-from environments import Database, set_fieldset, set_monitored
+from environments import Database, set_fieldset, set_monitored, config_db
 
-config_db = Database('config_var')
 router = APIRouter(tags=['Config'])
 
 @router.get('/', response_model=List[ConfigVar])
