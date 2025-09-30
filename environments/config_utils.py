@@ -23,9 +23,8 @@ influxLogParams = {
 
 def is_monitored(device: str) -> bool:
     if influxLogParams["monitored"] is None:
-        devices = get_config("monitored_devices") or '*'
+        devices = get_config("monitored_devices")
         if type(device) is str and devices == '*':
-            config_db.insert(ConfigVar(key="monitored_devices", value=devices))
             influxLogParams["monitored"] = '*'
         else:
             influxLogParams["monitored"] = [item.strip() for item in devices.split(',')]
@@ -36,9 +35,6 @@ def is_monitored(device: str) -> bool:
 def get_fieldset() -> list:
     if influxLogParams["fieldsets"] is None:
         fields = get_config("monitored_fieldsets")
-        if fields is None:
-            fields = 'temperature, humidity, lux, brightness'
-            config_db.insert(ConfigVar(key="monitored_fieldsets", value=fields))
         influxLogParams['fieldsets'] = [f.strip() for f in fields.split(',') if ' ' not in f.strip()]
     return influxLogParams["fieldsets"]
 
@@ -62,11 +58,15 @@ def set_monitored(devices: str) -> bool:
     if there is a blank in the name like 'thermo sensor, thermo2',
     it will be ignored
     """
-    logger.debug(f"devices ${devices}")
+    logger.debug(f"devices {devices}")
     try:
-        influxLogParams['monitored'] = [d.strip() for d in devices.split(',') if ' ' not in d.strip()]
-        value=str(influxLogParams['monitored']).replace('[', '').replace(']', '').replace("'", '')
-        config_db.insert(ConfigVar(key='monitored_devices', value=value))
+        if devices == '*':
+            config_db.insert(ConfigVar(key='monitored_devices', value='*'))
+            influxLogParams['monitored'] = '*'
+        else:
+            influxLogParams['monitored'] = [d.strip() for d in devices.split(',') if ' ' not in d.strip()]
+            value=str(influxLogParams['monitored']).replace('[', '').replace(']', '').replace("'", '')
+            config_db.insert(ConfigVar(key='monitored_devices', value=value))
         return True
     except Exception as e:
         return False
