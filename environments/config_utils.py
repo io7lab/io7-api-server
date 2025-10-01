@@ -16,9 +16,16 @@ def get_config(key : str) -> str:
     return None
 
 # utility functions for logging to influxdb
+def initFieldSets():
+    fieldsets = get_config("monitored_fieldsets")
+    if fieldsets:
+        return [f.strip() for f in fieldsets.split(',')]
+    else:
+        return []
+
 influxLogParams = {
-    "fieldsets" :  [f.strip() for f in get_config("monitored_fieldsets").split(',')],
-    "monitored" : get_config("monitored_devices")
+    "fieldsets" :  initFieldSets(),
+    "monitored" : get_config("monitored_devices") or ''
 }
 
 def is_monitored(device: str) -> bool:
