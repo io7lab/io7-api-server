@@ -93,8 +93,8 @@ async def set_monitored_fields(
     - A JSON object with processing status.
     """ 
     try:
-        set_fieldset(fields=fields['fieldsets'])
-        return {"status":"ok"}
+        newSets = set_fieldset(fields=fields['fieldsets'])
+        return {"status":"ok", "newSets":newSets}
     except Exception as e:
         return {"status":"error", "Exception": type(e).__name__}
 
@@ -122,8 +122,8 @@ async def set_monitored_devices(
     - A JSON object with processing status.
     """
     try:
-        set_monitored(devices=devices['devices'])
-        return {"status":"ok"}
+        monitored = set_monitored(devices=devices['devices'])
+        return {"status":"ok", "monitored" : monitored}
     except Exception as e:
         return {"status":"error", "Exception": type(e).__name__}
 

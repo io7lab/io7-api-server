@@ -29,7 +29,7 @@ def is_monitored(device: str) -> bool:
 def get_fieldset() -> list:
     return influxLogParams["fieldsets"]
 
-def set_fieldset(fields: str) -> bool:
+def set_fieldset(fields: str) -> list:
     """
     fileds is a string like 'temperature, humidity, lux, brightness'
     if there is a blank in the name like 'room temperature, humidity, lux, brightness',
@@ -39,11 +39,11 @@ def set_fieldset(fields: str) -> bool:
         fieldsets = list(set([f.strip() for f in fields.split(',') if f.strip() != '' and ' ' not in f.strip()]))
         influxLogParams["fieldsets"] = fieldsets
         config_db.insert(ConfigVar(key='monitored_fieldsets', value=', '.join(fieldsets)))
-        return True
+        return fieldsets
     except Exception as e:
-        return False
+        return []
 
-def set_monitored(devices: str) -> bool:
+def set_monitored(devices: str) -> list:
     """
     devices is a string like 'thermo1, thermo2, lux1'
     if there is a blank in the name like 'thermo sensor, thermo2',
@@ -54,10 +54,11 @@ def set_monitored(devices: str) -> bool:
         if devices == '*':
             config_db.insert(ConfigVar(key='monitored_devices', value='*'))
             influxLogParams['monitored'] = '*'
+            return ['*']
         else:
             monitored = list(set([d.strip() for d in devices.split(',') if d.strip() != '' and ' ' not in d.strip()]))
             influxLogParams['monitored'] = monitored
             config_db.insert(ConfigVar(key='monitored_devices', value=', '.join(monitored)))
-        return True
+            return monitored
     except Exception as e:
-        return False
+        return []
