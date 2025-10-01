@@ -17,25 +17,16 @@ def get_config(key : str) -> str:
 
 # utility functions for logging to influxdb
 influxLogParams = {
-    "fieldsets" : None,
-    "monitored" : None
+    "fieldsets" :  [f.strip() for f in get_config("monitored_fieldsets").split(',')],
+    "monitored" : get_config("monitored_devices")
 }
 
 def is_monitored(device: str) -> bool:
-    if influxLogParams["monitored"] is None:
-        devices = get_config("monitored_devices")
-        if type(device) is str and devices == '*':
-            influxLogParams["monitored"] = '*'
-        else:
-            influxLogParams["monitored"] = [item.strip() for item in devices.split(',')]
     if influxLogParams["monitored"] == "*" or device in influxLogParams["monitored"]:
         return True
     return False
 
 def get_fieldset() -> list:
-    if influxLogParams["fieldsets"] is None:
-        fields = get_config("monitored_fieldsets")
-        influxLogParams['fieldsets'] = [f.strip() for f in fields.split(',') if ' ' not in f.strip()]
     return influxLogParams["fieldsets"]
 
 def set_fieldset(fields: str) -> bool:
@@ -45,9 +36,9 @@ def set_fieldset(fields: str) -> bool:
     it will be ignored
     """
     try:
-        influxLogParams['fieldsets'] = [f.strip() for f in fields.split(',') if ' ' not in f.strip()]
-        value=str(influxLogParams['fieldsets']).replace('[', '').replace(']', '').replace("'", '')
-        config_db.insert(ConfigVar(key='monitored_fieldsets', value=value))
+        fieldsets = list(set([f.strip() for f in fields.split(',') if f.strip() != '' and ' ' not in f.strip()]))
+        influxLogParams["fieldsets"] = fieldsets
+        config_db.insert(ConfigVar(key='monitored_fieldsets', value=', '.join(fieldsets)))
         return True
     except Exception as e:
         return False
@@ -64,9 +55,9 @@ def set_monitored(devices: str) -> bool:
             config_db.insert(ConfigVar(key='monitored_devices', value='*'))
             influxLogParams['monitored'] = '*'
         else:
-            influxLogParams['monitored'] = [d.strip() for d in devices.split(',') if ' ' not in d.strip()]
-            value=str(influxLogParams['monitored']).replace('[', '').replace(']', '').replace("'", '')
-            config_db.insert(ConfigVar(key='monitored_devices', value=value))
+            monitored = list(set([d.strip() for d in devices.split(',') if d.strip() != '' and ' ' not in d.strip()]))
+            influxLogParams['monitored'] = monitored
+            config_db.insert(ConfigVar(key='monitored_devices', value=', '.join(monitored)))
         return True
     except Exception as e:
         return False
