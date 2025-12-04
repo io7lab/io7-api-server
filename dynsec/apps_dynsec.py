@@ -141,4 +141,19 @@ def update_dynsec_members(appId: str, members: List[MemberDevice]):
     if len(add_list) > 0:
         add_dynsec_member(appId, add_list)
 
+    # disconnect the appId to get the new list reflected
+    dyn_cmd = {
+        'commands': [
+            {
+                'command': 'disableClient',
+                'username': appId
+            } ,
+            {
+                'command': 'enableClient',
+                'username': appId
+            }
+        ]
+    }
+    mqClient.publish('$CONTROL/dynamic-security/v1', json.dumps(dyn_cmd))
+
     logger.info(f'Updateing member devices for App ID({appId}). Removed : {del_list}, Added : {add_list}')
