@@ -53,7 +53,7 @@ def on_message(client, userdata, msg):
         edges = [edge['devId'] for edge in edges]
         edges.append(topic[1])
         client.publish(f"iot3/{topic[1]}/gateway/list", json.dumps(edges))
-    elif topic[2] == 'evt' and topic[3] is not 'connection':    # shadowing/logging the device event
+    elif topic[2] == 'evt' and topic[3] != 'connection':    # shadowing/logging the device event
         shadow_event(topic[1], msg)
         
 def on_connect(client, userdata, flags, rc):
